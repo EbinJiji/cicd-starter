@@ -1,0 +1,10 @@
+{
+  "name": "cicd-starter",
+  "version": "1.0.0",
+  "description": "A tiny project for learning CI/CD with GitHub Actions",
+  "main": "src/calculator.js",
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "MIT"
+}
