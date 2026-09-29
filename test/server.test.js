@@ -29,5 +29,7 @@ test("unknown operation returns 404", async () => {
 
 test("GET /health returns ok", async () => {
   const res = await fetch(`${baseUrl}/health`);
-  assert.deepStrictEqual(await res.json(), { status: "ok" });
+  const body = await res.json();
+  assert.strictEqual(body.status, "ok");
+  assert.ok(body.version);
 });

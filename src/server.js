@@ -7,7 +7,7 @@ function handle(req, res) {
   const op = url.pathname.slice(1);
 
   if (op === "health") {
-    return send(res, 200, { status: "ok" });
+    return send(res, 200, { status: "ok", version: process.env.GIT_SHA || "dev" });
   }
   if (!Object.hasOwn(calculator, op)) {
     return send(res, 404, { error: `Unknown operation: ${op}` });
