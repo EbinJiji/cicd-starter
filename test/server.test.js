@@ -22,6 +22,13 @@ test("GET /divide by zero returns 400", async () => {
   assert.strictEqual(res.status, 400);
 });
 
+test("GET / lists the available operations", async () => {
+  const res = await fetch(`${baseUrl}/`);
+  assert.strictEqual(res.status, 200);
+  const body = await res.json();
+  assert.deepStrictEqual(body.operations, ["add", "subtract", "multiply", "divide"]);
+});
+
 test("unknown operation returns 404", async () => {
   const res = await fetch(`${baseUrl}/modulo?a=1&b=2`);
   assert.strictEqual(res.status, 404);

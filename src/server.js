@@ -6,6 +6,14 @@ function handle(req, res) {
   const url = new URL(req.url, "http://localhost");
   const op = url.pathname.slice(1);
 
+  if (op === "") {
+    return send(res, 200, {
+      message: "Calculator API",
+      usage: "/<operation>?a=<number>&b=<number>",
+      operations: Object.keys(calculator),
+      example: "/add?a=2&b=3",
+    });
+  }
   if (op === "health") {
     return send(res, 200, { status: "ok", version: process.env.GIT_SHA || "dev" });
   }
