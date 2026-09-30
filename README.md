@@ -24,16 +24,22 @@ The pipeline lives in `.github/workflows/ci.yml`:
 - **CD:** after the tests and lint pass on `main`, builds a Docker image and publishes it to
   `ghcr.io/ebinjiji/cicd-starter` (tags: `latest` and the commit SHA). On pull requests
   the image is only built, to check the Dockerfile still works.
-- **Deploy:** on `main`, the exact image just built (by digest) is deployed to Render via a
-  deploy hook (`RENDER_DEPLOY_HOOK` secret). The job then polls `$RENDER_URL/health` until it
-  reports the new commit SHA, so a green run means the new version is actually live.
+- **Deploy:** on `main`, the exact image just built (by digest) goes to **staging** first, then
+  waits for a manual approval before the same image goes to **production**. Approve it from the
+  run page (**Review deployments**). Each is a Render service with its own GitHub environment
+  holding a `RENDER_DEPLOY_HOOK` secret and a `RENDER_URL` variable. Both deploys go through
+  `.github/workflows/deploy.yml`, which polls `$RENDER_URL/health` until it reports the new
+  commit SHA, so a green deploy means that version is actually live.
+  - Staging: https://cicd-starter-latest-1.onrender.com
+  - Production: https://cicd-starter-latest.onrender.com
 
 ## Rolling back
 
 If a bad release reaches production, redeploy an earlier one without rebuilding:
 **Actions → Rollback → Run workflow**, and enter the commit SHA to go back to (short is fine).
 The workflow finds that commit's image (`sha-<short sha>` tag), deploys it to Render, and
-waits for `/health` to report that SHA. Or from a terminal:
+waits for `/health` to report that SHA. Like a normal release, it waits for production
+approval before deploying. Or from a terminal:
 
     gh workflow run rollback.yml -f sha=<commit>
 
