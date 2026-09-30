@@ -1,10 +1,14 @@
 # CI/CD Starter
 
+[![CI](https://github.com/EbinJiji/cicd-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/EbinJiji/cicd-starter/actions/workflows/ci.yml)
+
 A tiny calculator web service for learning CI/CD with GitHub Actions.
 
-Run tests locally:
+Run tests and lint locally:
 
+    npm install
     npm test
+    npm run lint
 
 Run the server locally:
 
@@ -15,10 +19,14 @@ Run the server locally:
 
 The pipeline lives in `.github/workflows/ci.yml`:
 
-- **CI:** runs the tests on Node 20, 22 and 24 for every pull request and every push to `main`.
-- **CD:** after the tests pass on `main`, builds a Docker image and publishes it to
+- **CI:** runs the tests on Node 20, 22 and 24, and ESLint once, for every pull request and
+  every push to `main`.
+- **CD:** after the tests and lint pass on `main`, builds a Docker image and publishes it to
   `ghcr.io/ebinjiji/cicd-starter` (tags: `latest` and the commit SHA). On pull requests
   the image is only built, to check the Dockerfile still works.
+- **Deploy:** on `main`, the exact image just built (by digest) is deployed to Render via a
+  deploy hook (`RENDER_DEPLOY_HOOK` secret). The job then polls `$RENDER_URL/health` until it
+  reports the new commit SHA, so a green run means the new version is actually live.
 
 Run the published image:
 

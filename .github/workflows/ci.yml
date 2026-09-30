@@ -1,4 +1,4 @@
-# Tests run on pushes to main and on every pull request.
+# Tests and lint run on pushes to main and on every pull request.
 # After tests pass on main, a Docker image is published to ghcr.io
 # and deployed to Render.
 name: CI
@@ -28,9 +28,29 @@ jobs:
       - name: Run tests
         run: npm test
 
+  lint:
+    # Style and bug checks only need to run once, not on every Node version.
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
   docker:
-    # Only start once every test job has passed.
-    needs: test
+    # Only start once every test job and the lint job have passed.
+    needs: [test, lint]
     runs-on: ubuntu-latest
     permissions:
       contents: read
