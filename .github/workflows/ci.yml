@@ -1,5 +1,6 @@
 # Tests run on pushes to main and on every pull request.
-# After tests pass on main, a Docker image is published to ghcr.io.
+# After tests pass on main, a Docker image is published to ghcr.io
+# and deployed to Render.
 name: CI
 
 on:
@@ -34,6 +35,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
 
     steps:
       - name: Check out the code
@@ -61,9 +64,47 @@ jobs:
             type=sha
 
       - name: Build and push the image
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
           push: ${{ github.event_name == 'push' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: GIT_SHA=${{ github.sha }}
+
+  deploy:
+    needs: docker
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.RENDER_URL }}
+
+    steps:
+      # Deploy the exact image built above (by digest), not whatever "latest" is.
+      - name: Trigger deploy on Render
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          DIGEST: ${{ needs.docker.outputs.digest }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}@${DIGEST}"
+          echo "Deploying $image"
+          curl -fsS -X POST "$DEPLOY_HOOK&imgURL=$(jq -rn --arg v "$image" '$v|@uri')"
+
+      # Render deploys in the background, so poll until the new commit is live.
+      - name: Wait for the new version to go live
+        env:
+          URL: ${{ vars.RENDER_URL }}
+        run: |
+          for i in $(seq 1 40); do
+            version=$(curl -fsS "$URL/health" | jq -r .version) || version=""
+            echo "Attempt $i: live version is ${version:-unreachable}"
+            if [ "$version" = "$GITHUB_SHA" ]; then
+              echo "Deployed successfully"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "New version did not go live within 10 minutes"
+          exit 1
