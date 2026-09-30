@@ -1,0 +1,82 @@
+# Redeploy an earlier release to Render, without rebuilding anything.
+# Run it from the Actions tab: Rollback → Run workflow → enter a commit SHA.
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA to roll back to (short or full)"
+        required: true
+
+# Never run at the same time as a normal deploy.
+concurrency: production
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    environment:
+      name: production
+      url: ${{ vars.RENDER_URL }}
+
+    steps:
+      # Turn a short SHA into the full one that /health reports.
+      - name: Resolve the commit
+        id: commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_SHA: ${{ inputs.sha }}
+        run: |
+          full=$(gh api "repos/$GITHUB_REPOSITORY/commits/$INPUT_SHA" -q .sha)
+          echo "Rolling back to $full"
+          echo "sha=$full" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # CI tags every image it publishes as sha-<first 7 chars of the commit>.
+      - name: Find the image built from that commit
+        id: image
+        env:
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          repo="ghcr.io/${GITHUB_REPOSITORY,,}"
+          tag="$repo:sha-${SHA:0:7}"
+          if ! digest=$(docker buildx imagetools inspect "$tag" --format '{{.Manifest.Digest}}'); then
+            echo "::error::No image found for $tag. Was this commit ever built on main?"
+            exit 1
+          fi
+          echo "Found $tag at $digest"
+          echo "ref=$repo@$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger deploy on Render
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          IMAGE: ${{ steps.image.outputs.ref }}
+        run: |
+          echo "Deploying $IMAGE"
+          curl -fsS -X POST "$DEPLOY_HOOK&imgURL=$(jq -rn --arg v "$IMAGE" '$v|@uri')"
+
+      - name: Wait for the old version to go live
+        env:
+          URL: ${{ vars.RENDER_URL }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          for i in $(seq 1 40); do
+            version=$(curl -fsS "$URL/health" | jq -r .version) || version=""
+            echo "Attempt $i: live version is ${version:-unreachable}"
+            if [ "$version" = "$SHA" ]; then
+              echo "Rolled back successfully"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "Rolled-back version did not go live within 10 minutes"
+          exit 1
