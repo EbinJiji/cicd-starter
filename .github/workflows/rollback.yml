@@ -9,18 +9,16 @@ on:
         description: "Commit SHA to roll back to (short or full)"
         required: true
 
-# Never run at the same time as a normal deploy.
-concurrency: production
-
 jobs:
-  rollback:
+  # Work out which image to redeploy.
+  find-release:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: read
-    environment:
-      name: production
-      url: ${{ vars.RENDER_URL }}
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
+      image: ${{ steps.image.outputs.ref }}
 
     steps:
       # Turn a short SHA into the full one that /health reports.
@@ -56,27 +54,13 @@ jobs:
           echo "Found $tag at $digest"
           echo "ref=$repo@$digest" >> "$GITHUB_OUTPUT"
 
-      - name: Trigger deploy on Render
-        env:
-          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-          IMAGE: ${{ steps.image.outputs.ref }}
-        run: |
-          echo "Deploying $IMAGE"
-          curl -fsS -X POST "$DEPLOY_HOOK&imgURL=$(jq -rn --arg v "$IMAGE" '$v|@uri')"
-
-      - name: Wait for the old version to go live
-        env:
-          URL: ${{ vars.RENDER_URL }}
-          SHA: ${{ steps.commit.outputs.sha }}
-        run: |
-          for i in $(seq 1 40); do
-            version=$(curl -fsS "$URL/health" | jq -r .version) || version=""
-            echo "Attempt $i: live version is ${version:-unreachable}"
-            if [ "$version" = "$SHA" ]; then
-              echo "Rolled back successfully"
-              exit 0
-            fi
-            sleep 15
-          done
-          echo "Rolled-back version did not go live within 10 minutes"
-          exit 1
+  # Same deploy as CI, so it also waits for production approval and never
+  # overlaps a normal deploy.
+  deploy:
+    needs: find-release
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+      image: ${{ needs.find-release.outputs.image }}
+      sha: ${{ needs.find-release.outputs.sha }}
+    secrets: inherit

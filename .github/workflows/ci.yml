@@ -1,6 +1,6 @@
 # Tests and lint run on pushes to main and on every pull request.
 # After tests pass on main, a Docker image is published to ghcr.io
-# and deployed to Render.
+# deployed to staging, and then (after approval) to production on Render.
 name: CI
 
 on:
@@ -56,7 +56,8 @@ jobs:
       contents: read
       packages: write
     outputs:
-      digest: ${{ steps.build.outputs.digest }}
+      # The pushed image pinned by digest, e.g. ghcr.io/owner/repo@sha256:...
+      image: ${{ steps.ref.outputs.image }}
 
     steps:
       - name: Check out the code
@@ -93,40 +94,31 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: GIT_SHA=${{ github.sha }}
 
-  deploy:
+      - name: Record the image reference
+        id: ref
+        if: github.event_name == 'push'
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}@${DIGEST}" >> "$GITHUB_OUTPUT"
+
+  # Every push to main goes to staging first...
+  deploy-staging:
     needs: docker
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    # Shared with the Rollback workflow so the two never run at once.
-    concurrency: production
-    environment:
-      name: production
-      url: ${{ vars.RENDER_URL }}
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+      image: ${{ needs.docker.outputs.image }}
+      sha: ${{ github.sha }}
+    secrets: inherit
 
-    steps:
-      # Deploy the exact image built above (by digest), not whatever "latest" is.
-      - name: Trigger deploy on Render
-        env:
-          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-          DIGEST: ${{ needs.docker.outputs.digest }}
-        run: |
-          image="ghcr.io/${GITHUB_REPOSITORY,,}@${DIGEST}"
-          echo "Deploying $image"
-          curl -fsS -X POST "$DEPLOY_HOOK&imgURL=$(jq -rn --arg v "$image" '$v|@uri')"
-
-      # Render deploys in the background, so poll until the new commit is live.
-      - name: Wait for the new version to go live
-        env:
-          URL: ${{ vars.RENDER_URL }}
-        run: |
-          for i in $(seq 1 40); do
-            version=$(curl -fsS "$URL/health" | jq -r .version) || version=""
-            echo "Attempt $i: live version is ${version:-unreachable}"
-            if [ "$version" = "$GITHUB_SHA" ]; then
-              echo "Deployed successfully"
-              exit 0
-            fi
-            sleep 15
-          done
-          echo "New version did not go live within 10 minutes"
-          exit 1
+  # ...then waits for approval (a required reviewer on the production
+  # environment) and ships the exact same image to production.
+  deploy-production:
+    needs: [docker, deploy-staging]
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: production
+      image: ${{ needs.docker.outputs.image }}
+      sha: ${{ github.sha }}
+    secrets: inherit
