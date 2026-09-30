@@ -28,6 +28,18 @@ The pipeline lives in `.github/workflows/ci.yml`:
   deploy hook (`RENDER_DEPLOY_HOOK` secret). The job then polls `$RENDER_URL/health` until it
   reports the new commit SHA, so a green run means the new version is actually live.
 
+## Rolling back
+
+If a bad release reaches production, redeploy an earlier one without rebuilding:
+**Actions → Rollback → Run workflow**, and enter the commit SHA to go back to (short is fine).
+The workflow finds that commit's image (`sha-<short sha>` tag), deploys it to Render, and
+waits for `/health` to report that SHA. Or from a terminal:
+
+    gh workflow run rollback.yml -f sha=<commit>
+
+A rollback only fixes production. Revert the bad change on `main` too (with a test that
+catches it), or the next deploy will ship it again.
+
 Run the published image:
 
     docker run -p 3000:3000 ghcr.io/ebinjiji/cicd-starter:latest

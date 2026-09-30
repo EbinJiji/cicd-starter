@@ -97,6 +97,8 @@ jobs:
     needs: docker
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    # Shared with the Rollback workflow so the two never run at once.
+    concurrency: production
     environment:
       name: production
       url: ${{ vars.RENDER_URL }}
