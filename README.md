@@ -50,6 +50,17 @@ The pipeline lives in `.github/workflows/ci.yml`:
 - **Runners** are pinned to `ubuntu-24.04` rather than `ubuntu-latest`, so a new Ubuntu
   release can't change the build environment without a PR.
 
+## Render setup (Blueprint)
+
+`render.yaml` describes both Render services (name, image, plan, region, health check), so
+the hosting setup is reviewed in PRs like the code. It is linked to Render as a Blueprint
+with **Auto Sync off**: changes to the file are applied only when you click **Manual Sync**
+in Render, after checking the list of changes it shows.
+
+Releases don't go through this file. CI deploys each release by image digest through the
+deploy hooks. A sync redeploys the services from `:latest`, which CI pushes *before*
+staging and approval, so don't sync while an unapproved release is waiting.
+
 ## Rolling back
 
 If a bad release reaches production, redeploy an earlier one without rebuilding:
