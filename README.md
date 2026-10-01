@@ -34,6 +34,10 @@ The pipeline lives in `.github/workflows/ci.yml`:
   offered for approval. Run them yourself with `node scripts/smoke.js <url>`.
   - Staging: https://cicd-starter-latest-1.onrender.com
   - Production: https://cicd-starter-latest.onrender.com
+- **Monitoring:** `.github/workflows/monitor.yml` runs the smoke tests against production every
+  6 hours. While they fail, it keeps one issue labelled `production-down` open (GitHub emails
+  you when it opens) and closes it automatically once they pass again. Run it any time from
+  **Actions → Monitor**. GitHub pauses scheduled workflows after 60 days without repo activity.
 - **Updates:** Dependabot (`.github/dependabot.yml`) opens a weekly PR for newer npm packages
   and another for newer GitHub Actions. They go through the same CI as any other PR.
 - **Runners** are pinned to `ubuntu-24.04` rather than `ubuntu-latest`, so a new Ubuntu
