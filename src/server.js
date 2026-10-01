@@ -21,8 +21,11 @@ function handle(req, res) {
     return send(res, 404, { error: `Unknown operation: ${op}` });
   }
 
-  const a = Number(url.searchParams.get("a")) || 0;
-  const b = Number(url.searchParams.get("b")) || 0;
+  const a = Number(url.searchParams.get("a"));
+  const b = Number(url.searchParams.get("b"));
+  if (Number.isNaN(a) || Number.isNaN(b)) {
+    return send(res, 400, { error: "a and b must be numbers" });
+  }
 
   try {
     send(res, 200, { result: calculator[op](a, b) });
