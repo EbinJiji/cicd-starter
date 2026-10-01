@@ -1,7 +1,7 @@
 # Reusable deploy: sends one image to one environment's Render service and waits
-# until /health reports the expected commit. Called by CI (staging, then
-# production) and by Rollback. Each GitHub environment has its own
-# RENDER_DEPLOY_HOOK secret and RENDER_URL variable.
+# until /health reports the expected commit, then runs smoke tests against it.
+# Called by CI (staging, then production) and by Rollback. Each GitHub
+# environment has its own RENDER_DEPLOY_HOOK secret and RENDER_URL variable.
 name: Deploy
 
 on:
@@ -55,3 +55,13 @@ jobs:
           done
           echo "$SHA did not go live within 10 minutes"
           exit 1
+
+      # /health only proves the right version is running; these prove it works.
+      # On staging, a failure here stops the release before production approval.
+      - name: Check out the smoke tests
+        uses: actions/checkout@v7
+
+      - name: Run smoke tests
+        env:
+          URL: ${{ vars.RENDER_URL }}
+        run: node scripts/smoke.js "$URL"

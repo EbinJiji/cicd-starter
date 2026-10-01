@@ -29,7 +29,9 @@ The pipeline lives in `.github/workflows/ci.yml`:
   run page (**Review deployments**). Each is a Render service with its own GitHub environment
   holding a `RENDER_DEPLOY_HOOK` secret and a `RENDER_URL` variable. Both deploys go through
   `.github/workflows/deploy.yml`, which polls `$RENDER_URL/health` until it reports the new
-  commit SHA, so a green deploy means that version is actually live.
+  commit SHA, then runs smoke tests (`scripts/smoke.js`) against it: a few real requests that
+  check the live site gives the right answers. If they fail on staging, production is never
+  offered for approval. Run them yourself with `node scripts/smoke.js <url>`.
   - Staging: https://cicd-starter-latest-1.onrender.com
   - Production: https://cicd-starter-latest.onrender.com
 - **Updates:** Dependabot (`.github/dependabot.yml`) opens a weekly PR for newer npm packages
