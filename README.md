@@ -34,6 +34,11 @@ The pipeline lives in `.github/workflows/ci.yml`:
   offered for approval. Run them yourself with `node scripts/smoke.js <url>`.
   - Staging: https://cicd-starter-latest-1.onrender.com
   - Production: https://cicd-starter-latest.onrender.com
+- **Security:** every PR and push to `main` is checked two ways. Trivy (`scan` job in CI) builds
+  the image and fails on HIGH or CRITICAL vulnerabilities that have a fix available, so a
+  vulnerable image is never published. CodeQL (`codeql.yml`) looks for vulnerable code patterns
+  in the JavaScript and the workflow files; findings appear under **Security → Code scanning**.
+  Both actions are pinned to commit SHAs rather than tags.
 - **Monitoring:** `.github/workflows/monitor.yml` runs the smoke tests against production every
   6 hours. While they fail, it keeps one issue labelled `production-down` open (GitHub emails
   you when it opens) and closes it automatically once they pass again. Run it any time from
