@@ -32,6 +32,10 @@ The pipeline lives in `.github/workflows/ci.yml`:
   commit SHA, so a green deploy means that version is actually live.
   - Staging: https://cicd-starter-latest-1.onrender.com
   - Production: https://cicd-starter-latest.onrender.com
+- **Updates:** Dependabot (`.github/dependabot.yml`) opens a weekly PR for newer npm packages
+  and another for newer GitHub Actions. They go through the same CI as any other PR.
+- **Runners** are pinned to `ubuntu-24.04` rather than `ubuntu-latest`, so a new Ubuntu
+  release can't change the build environment without a PR.
 
 ## Rolling back
 

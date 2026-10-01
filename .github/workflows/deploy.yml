@@ -22,7 +22,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # One deploy or rollback per environment at a time.
     concurrency: deploy-${{ inputs.environment }}
     environment:
