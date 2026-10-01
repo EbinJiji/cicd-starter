@@ -9,6 +9,10 @@ on:
         description: "Commit SHA to roll back to (short or full)"
         required: true
 
+# Read-only by default; jobs that need more (e.g. pushing the image) ask for it.
+permissions:
+  contents: read
+
 jobs:
   # Work out which image to redeploy.
   find-release:
