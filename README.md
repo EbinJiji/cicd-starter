@@ -38,7 +38,9 @@ The pipeline lives in `.github/workflows/ci.yml`:
   the image and fails on HIGH or CRITICAL vulnerabilities that have a fix available, so a
   vulnerable image is never published. CodeQL (`codeql.yml`) looks for vulnerable code patterns
   in the JavaScript and the workflow files; findings appear under **Security → Code scanning**.
-  Both actions are pinned to commit SHAs rather than tags.
+- **Pinned actions:** every action in the workflows is pinned to a full commit SHA (with the
+  version in a comment), because a tag can be moved to different code but a SHA cannot.
+  Dependabot updates the SHA and the comment together.
 - **Monitoring:** `.github/workflows/monitor.yml` runs the smoke tests against production every
   6 hours. While they fail, it keeps one issue labelled `production-down` open (GitHub emails
   you when it opens) and closes it automatically once they pass again. Run it any time from
