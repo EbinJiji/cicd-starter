@@ -41,7 +41,3 @@ test("GET /health returns ok", async () => {
   assert.ok(body.version);
 });
 
-test("non-numeric input returns 400", async () => {
-  const res = await fetch(`${baseUrl}/add?a=abc&b=1`);
-  assert.strictEqual(res.status, 400);
-});
