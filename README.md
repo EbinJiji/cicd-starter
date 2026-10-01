@@ -53,9 +53,13 @@ The pipeline lives in `.github/workflows/ci.yml`:
 ## Render setup (Blueprint)
 
 `render.yaml` describes both Render services (name, image, plan, region, health check), so
-the hosting setup is reviewed in PRs like the code. It is linked to Render as a Blueprint
-with **Auto Sync off**: changes to the file are applied only when you click **Manual Sync**
-in Render, after checking the list of changes it shows.
+the hosting setup is reviewed in PRs like the code. It is **not linked to Render yet**, so
+for now it is documentation; the dashboard is still the source of truth.
+
+To link it: Render → **New → Blueprint** → this repo, branch `main`. On the review screen
+both services must show as **updated**, not **created** (created means a name doesn't match
+and Render would make duplicates, so cancel). After linking, set the Blueprint's
+**Auto Sync** to **No**, so changes are applied only when you click **Manual Sync**.
 
 Releases don't go through this file. CI deploys each release by image digest through the
 deploy hooks. A sync redeploys the services from `:latest`, which CI pushes *before*
