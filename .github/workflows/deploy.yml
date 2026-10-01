@@ -20,6 +20,10 @@ on:
         type: string
         required: true
 
+# Read-only by default; jobs that need more (e.g. pushing the image) ask for it.
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-24.04
